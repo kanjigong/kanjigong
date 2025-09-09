@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>학교폭력예방 슈팅게임</title>
+  <style>
+    :root{ --bg:#0f172a; --panel:#111827ee; --accent:#22d3ee; --accent2:#a78bfa; --good:#10b981; --bad:#ef4444; --text:#e5e7eb; --muted:#94a3b8; }
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif; touch-action:none; -webkit-user-select:none; user-select:none; }
+    #wrap{ position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr auto; gap:.5rem; }
+    header{ display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:linear-gradient(180deg, #111827dd, #0b1020aa); backdrop-filter: blur(6px); box-shadow:0 6px 20px #0008; }
+    header .stat{display:flex; gap:.8rem; align-items:baseline; font-weight:700}
+    header .stat span{padding:.2rem .5rem; border-radius:999px; background:#0b1020; box-shadow: inset 0 0 0 1px #ffffff14}
+    header .stat b{color:var(--accent)}
+    header .title{font-weight:800; letter-spacing:.02em}
+    #game-area{ position:relative; overflow:hidden; }
+    canvas{ width:100%; height:100%; display:block; background: radial-gradient(1200px 700px at 50% 100%, #13203c 10%, #0b1226 55%, #0a0f1e 100%); touch-action:none; }
+    /* Controls */
+    #controls{ display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.6rem; background:linear-gradient(0deg, #0b1020cc, #0b102000); }
+    .btn{ appearance:none; border:none; color:white; font-weight:800; letter-spacing:.04em; padding:.6rem .9rem; border-radius:1rem; background:linear-gradient(180deg, var(--accent), #0891b2); box-shadow: 0 8px 20px #0891b244, inset 0 -2px 0 #0003; cursor:pointer; }
+    .btn.secondary{ background:linear-gradient(180deg, var(--accent2), #6d28d9); }
+    .pill{ display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:999px; font-size:.8rem; background:#0b1020; box-shadow: inset 0 0 0 1px #ffffff10; }
+    #overlay{ position:absolute; inset:0; display:none; place-items:center; background:linear-gradient(180deg, #0009, #000b); text-align:center; padding:1rem; }
+    #overlay .card{ background:var(--panel); border-radius:1.25rem; padding:1rem; max-width:640px; width:min(92vw, 640px); box-shadow: 0 20px 60px #0009, inset 0 0 0 1px #ffffff12; }
+    .card h1{ margin:.2rem 0 .6rem; font-size:clamp(1.2rem, 2.6vw, 1.8rem)}
+    .flex{display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center}
+    .tag{ font-weight:700; color:#111827; background:linear-gradient(180deg, #f3f4f6, #e5e7eb); border-radius:.6rem; padding:.25rem .55rem}
+    .hint{font-size:.95rem; color:#d1d5db; margin-top:.5rem}
+    .summary{ text-align:left; font-size:.95rem; line-height:1.45; color:#e5e7eb}
+    .summary ul{margin:.4rem 0 .2rem 1rem}
+
+    /* Mobile movement buttons */
+    .move-area{ display:flex; gap:.5rem; align-items:center; }
+    .move-btn{ width:56px; height:56px; border-radius:12px; background:#0b1220; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow: inset 0 -2px 0 #0003; color:var(--text); }
+    .big-action{ display:flex; gap:.6rem; align-items:center }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <header>
+      <div class="title">🎯 <b>학교폭력예방</b> 슈팅</div>
+      <div class="stat">
+        <span>점수 <b id="score">0</b></span>
+        <span>남은 시간 ⏱️ <b id="time">30</b>s</span>
+        <span class="pill" title="올바른 단어만 맞히세요!">✅ 올바른 단어만!</span>
+      </div>
+    </header>
+    <div id="game-area">
+      <canvas id="game"></canvas>
+      <div id="overlay">
+        <div class="card">
+          <h1 id="result-title">학교폭력예방 슈팅</h1>
+          <p class="hint" id="result-sub">올바른 단어(예방·회복·존중 관련)를 맞히면 +10, 잘못된 단어(폭력·괴롭힘 관련)를 맞히면 −5</p>
+          <div class="flex" id="chips"></div>
+          <div class="summary" id="summary"></div>
+          <div style="margin-top:.8rem; display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap;">
+            <button class="btn" id="start">게임 시작</button>
+            <button class="btn secondary" id="restart" style="display:none;">다시 하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="controls">
+      <div class="move-area">
+        <div class="move-btn" id="leftBtn">◀</div>
+        <div class="move-btn" id="rightBtn">▶</div>
+      </div>
+      <div class="big-action">
+        <button class="btn" id="fire">발사</button>
+        <span id="info">화면 상단 터치: 발사 · 하단 드래그: 이동 (모바일)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  ;(() => {
+    // ----- Word Sets -----
+    const GOOD_WORDS = ['존중','공감','경청','배려','사과','회복','화해','도움요청','신고','중재','안전','규칙','약속','협력','다양성존중','사이버폭력차단','목격자개입','언어조심','멈춰!','친절'];
+    const BAD_WORDS = ['따돌림','괴롭힘','폭행','욕설','악성댓글','소문퍼뜨리기','협박','배제','무시','사이버따돌림','왕따','비하','조롱','모욕','신체폭력'];
+
+    // ----- Canvas Setup -----
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start');
+    const restartBtn = document.getElementById('restart');
+    const fireBtn = document.getElementById('fire');
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const chips = document.getElementById('chips');
+    const summary = document.getElementById('summary');
+
+    let W = 0, H = 0;
+    const DPR = Math.min(devicePixelRatio || 1, 2);
+    function resize(){
+      const rect = document.getElementById('game-area').getBoundingClientRect();
+      W = Math.floor(rect.width); H = Math.floor(rect.height);
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      // center player if not set
+      if(!player._init) { player.x = W/2; player._init = true; }
+      player.y = H - 36;
+    }
+    addEventListener('resize', resize, {passive:true});
+
+    // ----- Game State -----
+    let running = false;
+    let score = 0;
+    let timeLeft = 60; // seconds
+    let lastSpawn = 0;
+    let spawnInterval = 900; // ms
+    let bullets = [];
+    let targets = [];
+    let lastFireAt = 0;
+    let hitGood = new Set();
+    let hitBad = new Set();
+
+    // player state
+    const player = { x: 0, y: 0, w: 44, h: 18, speed: 220, _init:false };
+    let moveLeft = false, moveRight = false;
+
+    // mobile drag to move
+    let isDragging = false, dragPointerId = null;
+
+    // ----- Image support (optional external images: player.png, bullet.png)
+    const images = {};
+    function loadOptionalImage(name, src){
+      const img = new Image(); img.src = src; img.onload = ()=>{ images[name]=img; };
+      img.onerror = ()=>{ /* ignore */ };
+    }
+    // attempt to load local images if user added them next to the HTML file
+    loadOptionalImage('player','player.png');
+    loadOptionalImage('bullet','bullet.png');
+
+    function spawnTarget(){
+      const pickGood = Math.random() < 0.6;
+      const text = pickGood ? GOOD_WORDS[Math.floor(Math.random()*GOOD_WORDS.length)] : BAD_WORDS[Math.floor(Math.random()*BAD_WORDS.length)];
+      const speed = 0.4 + Math.random()*0.9 + (1 - timeLeft/60)*0.6;
+      const radius = 22 + Math.random()*12;
+      const x = 30 + Math.random()*(W-60);
+      const y = -40;
+      const color = pickGood ? '#10b981' : '#ef4444';
+      targets.push({x, y, r: radius, v: speed, text, isGood: pickGood, color});
+    }
+
+    function fireToward(tx, ty){
+      const now = performance.now();
+      if(now - lastFireAt < 140) return;
+      lastFireAt = now;
+      const dx = tx - player.x; const dy = ty - player.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const speed = 11.0; // px per frame
+      bullets.push({x:player.x, y:player.y-12, vx: dx/len*speed, vy: dy/len*speed});
+    }
+
+    // input handlers
+    canvas.addEventListener('pointerdown', (e)=>{
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left); const y = (e.clientY - rect.top);
+      // on touch devices: touching lower region -> move (drag) to reposition character
+      if(e.pointerType === 'touch' && y > H * 0.68){
+        isDragging = true; dragPointerId = e.pointerId; player.x = x; canvas.setPointerCapture(e.pointerId); return;
+      }
+      // otherwise -> fire
+      fireToward(x, y);
+    });
+    canvas.addEventListener('pointermove', (e)=>{
+      if(isDragging && e.pointerId === dragPointerId){
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left);
+        player.x = Math.max(18, Math.min(W-18, x));
+      }
+    });
+    canvas.addEventListener('pointerup', (e)=>{
+      if(isDragging && e.pointerId === dragPointerId){ isDragging=false; try{ canvas.releasePointerCapture(e.pointerId); }catch(e){} dragPointerId=null; }
+    });
+    canvas.addEventListener('pointercancel', (e)=>{ if(isDragging && e.pointerId === dragPointerId){ isDragging=false; dragPointerId=null; } });
+
+    // fire button
+    fireBtn.addEventListener('click', ()=>{ fireToward(player.x, 0); });
+
+    // movement buttons (press & hold)
+    leftBtn.addEventListener('pointerdown', ()=>{ moveLeft = true; });
+    leftBtn.addEventListener('pointerup', ()=>{ moveLeft = false; });
+    leftBtn.addEventListener('pointercancel', ()=>{ moveLeft = false; });
+    rightBtn.addEventListener('pointerdown', ()=>{ moveRight = true; });
+    rightBtn.addEventListener('pointerup', ()=>{ moveRight = false; });
+    rightBtn.addEventListener('pointercancel', ()=>{ moveRight = false; });
+
+    // keyboard
+    addEventListener('keydown', (e)=>{ if(e.key === 'ArrowLeft') moveLeft = true; if(e.key === 'ArrowRight') moveRight = true; if(e.key === ' ' || e.key === 'Enter') fireToward(player.x, 0); });
+    addEventListener('keyup', (e)=>{ if(e.key === 'ArrowLeft') moveLeft = false; if(e.key === 'ArrowRight') moveRight = false; });
+
+    // drawing
+    function drawTurret(){
+      // draw player using image if available, else simple turret
+      if(images.player){ const img = images.player; const w = 48, h = 48; ctx.drawImage(img, player.x - w/2, player.y - h + 6, w, h); return; }
+      // base
+      ctx.save(); ctx.fillStyle = '#1f2937'; ctx.beginPath(); roundedRect(ctx, player.x-26, player.y, 52, 16, 8); ctx.fill();
+      // barrel
+      ctx.fillStyle = '#22d3ee'; ctx.fillRect(player.x-4, player.y-22, 8, 22);
+      // halo
+      const grd = ctx.createRadialGradient(player.x, player.y, 2, player.x, player.y, 60);
+      grd.addColorStop(0, '#22d3ee1a'); grd.addColorStop(1, '#22d3ee00');
+      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(player.x, player.y, 60, 0, Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    function roundedRect(ctx,x,y,w,h,r){ if(typeof r==='number'){ r=[r,r,r,r]; } ctx.beginPath(); ctx.moveTo(x+r[0],y); ctx.arcTo(x+w,y,x+w,y+h,r[1]); ctx.arcTo(x+w,y+h,x,y+h,r[2]); ctx.arcTo(x,y+h,x,y,r[3]); ctx.arcTo(x,y,x+w,y,r[0]); ctx.closePath(); }
+
+    function drawBackgroundStars(){ ctx.save(); ctx.globalAlpha = 0.25; for(let i=0;i<30;i++){ const x=(i*97%W), y=(i*71%H); ctx.fillStyle = i%2? '#38bdf81a' : '#a78bfa1a'; ctx.beginPath(); ctx.arc(x,y,(i%3)+1,0,Math.PI*2); ctx.fill(); } ctx.restore(); }
+
+    function update(dt){
+      // spawn
+      if(performance.now() - lastSpawn > spawnInterval){ spawnTarget(); lastSpawn = performance.now(); }
+      // move targets
+      for(const t of targets){ t.y += t.v * (dt/16); }
+      targets = targets.filter(t => t.y < H + 60);
+      // move bullets
+      for(const b of bullets){ b.x += b.vx; b.y += b.vy; }
+      bullets = bullets.filter(b => b.y > -40 && b.x > -40 && b.x < W+40);
+
+      // player movement
+      const moveAmount = player.speed * (dt/1000); // pixels per ms
+      if(moveLeft) player.x -= moveAmount;
+      if(moveRight) player.x += moveAmount;
+      // clamp
+      player.x = Math.max(18, Math.min(W-18, player.x));
+
+      // collisions
+      let scored = false;
+      for(let i=targets.length-1;i>=0;i--){
+        const t = targets[i];
+        for(let j=bullets.length-1;j>=0;j--){
+          const b = bullets[j];
+          if(((b.x - t.x)**2 + (b.y - t.y)**2) <= (t.r+8)**2){
+            if(t.isGood){ score += 10; hitGood.add(t.text); } else { score -= 5; hitBad.add(t.text); }
+            score = Math.max(score, 0);
+            bullets.splice(j,1);
+            targets.splice(i,1);
+            scored = true;
+            break;
+          }
+        }
+      }
+      if(scored){ scoreEl.textContent = score; }
+    }
+
+    function render(){
+      ctx.clearRect(0,0,W,H);
+      drawBackgroundStars();
+      // targets
+      for(const t of targets){ ctx.save(); ctx.shadowColor = t.color + '80'; ctx.shadowBlur = 20; ctx.fillStyle = t.color + 'cc'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#0b1020'; ctx.font = `bold ${Math.max(12, Math.min(18, t.r))}px system-ui, \"Noto Sans KR\"`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t.text, t.x, t.y+0.5); ctx.restore(); }
+      // bullets
+      if(images.bullet){ for(const b of bullets){ ctx.drawImage(images.bullet, b.x-9, b.y-9, 18, 18); } }
+      else{ ctx.fillStyle = '#22d3ee'; for(const b of bullets){ ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); } }
+      // player
+      drawTurret();
+      // UI hint
+      ctx.fillStyle = '#94a3b8'; ctx.font = '600 12px system-ui, "Noto Sans KR"'; ctx.textAlign='left'; ctx.fillText('올바른 단어만 맞히세요!', 10, 18);
+    }
+
+    let prev = 0;
+    function loop(ts){ if(!running) return; if(!prev) prev = ts; const dt = ts - prev; prev = ts; update(dt); render(); requestAnimationFrame(loop); }
+
+    let countdownId = null;
+    function startGame(){ resize(); running = true; score = 0; timeLeft = 60; targets = []; bullets = []; prev = 0; lastSpawn = 0; hitGood = new Set(); hitBad = new Set(); scoreEl.textContent = score; timeEl.textContent = timeLeft; overlay.style.display = 'none'; requestAnimationFrame(loop); clearInterval(countdownId); countdownId = setInterval(()=>{ if(!running) return; timeLeft--; timeEl.textContent = timeLeft; if(timeLeft <= 0) endGame(); }, 1000); }
+
+    function endGame(){ running = false; clearInterval(countdownId); chips.innerHTML = ''; const makeChip = (label, good=true)=>{ const el = document.createElement('span'); el.className='tag'; el.style.background = good ? 'linear-gradient(180deg,#a7f3d0,#6ee7b7)' : 'linear-gradient(180deg,#fecaca,#fca5a5)'; el.textContent = label; return el; };
+      if(hitGood.size){ chips.append('맞힌 올바른 단어: '); hitGood.forEach(w=>chips.append(makeChip(w,true))); }
+      if(hitBad.size){ chips.append(document.createElement('br')); chips.append('잘못 맞힌 단어: '); hitBad.forEach(w=>chips.append(makeChip(w,false))); }
+      const points = [['존중·배려','상대의 감정과 생각을 인정하고, 언어폭력을 사용하지 않기.'],['도움 요청/신고','목격했다면 어른에게 알리기, 신고자는 보호됨.'],['사이버폭력 예방','악성댓글 금지, 차단·신고 기능 활용, 개인정보 보호.'],['회복과 사과','피해자 중심 회복, 진심 어린 사과와 재발 방지 약속.'],['협력과 규칙','학급 규칙을 함께 만들고 함께 지키기.']];
+      const msg = `<p><b>점수: ${score}</b> · 30초 동안 학급의 올바른 행동 단어를 맞혀 보았어요.</p><ul>${points.map(([h,t])=>`<li><b>${h}</b> – ${t}</li>`).join('')}</ul>`;
+      summary.innerHTML = msg; document.getElementById('result-title').textContent = score >= 100 ? '아주 멋져요! 👍' : (score >= 60 ? '잘했어요! 🙌' : '다음엔 더 잘할 수 있어요 💪'); document.getElementById('result-sub').textContent = '올바른 단어(예방·회복·존중)는 +10, 잘못된 단어(폭력 관련)는 −5'; scoreEl.textContent = score; overlay.style.display = 'grid'; restartBtn.style.display = ''; }
+
+    startBtn.addEventListener('click', ()=>{ startGame(); });
+    restartBtn.addEventListener('click', ()=>{ startGame(); });
+
+    // initial overlay
+    overlay.style.display = 'grid';
+    resize();
+  })();
+  </script>
+</body>
+</html>
