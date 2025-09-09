@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>학교폭력 예방 슈팅게임</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #b0e0ff;
+      touch-action: none;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 18px;
+      background: rgba(255,255,255,0.8);
+      padding: 8px;
+      border-radius: 8px;
+    }
+    #endMessage {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      font-size: 24px;
+      font-weight: bold;
+      border-radius: 12px;
+      display: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">점수: 0 | 시간: 60</div>
+  <div id="endMessage"></div>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 효과음 추가 -->
+  <audio id="goodSound" src="good.mp3"></audio>
+  <audio id="badSound" src="bad.mp3"></audio>
+
+  <script src="game.js"></script>
+</body>
+</html>
