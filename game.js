@@ -4,7 +4,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let score = 0;
-let timeLeft = 60;
+let timeLeft = 40;
 let bullets = [];
 let words = [];
 let keys = {};
@@ -16,8 +16,8 @@ const goodSound = document.getElementById("goodSound");
 const badSound = document.getElementById("badSound");
 
 // 단어 목록
-const goodWords = ["존중", "배려", "용기", "우정", "도움", "사과", "경청", "친절", "협력", "신뢰"];
-const badWords = ["욕설", "폭력", "괴롭힘", "따돌림", "무시", "비하", "왕따", "조롱", "놀림", "위협"];
+const goodWords = ["존중", "배려", "용기", "우정", "도움", "사과", "경청", "친절", "협력", "신뢰", "공감"];
+const badWords = ["욕설", "폭력", "괴롭힘", "따돌림", "무시", "비하", "왕따", "조롱", "놀림", "위협", "사이버폭력력"];
 const allWords = [...goodWords, ...badWords];
 
 function randomWord() {
@@ -163,3 +163,4 @@ const gameInterval = setInterval(() => {
   draw();
   if (frameCount % 30 === 0) spawnWord();
 }, 1000 / 60);
+
