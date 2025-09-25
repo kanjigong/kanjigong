@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소수 나눗셈 슈퍼 챔피언십</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            text-align: center;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-blue {
+            background-color: #4a90e2;
+            color: white;
+        }
+        .btn-green {
+            background-color: #50e3c2;
+            color: white;
+        }
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .player-info.active .player-icon {
+            transform: scale(1.2);
+            box-shadow: 0 0 15px #4a90e2;
+        }
+        .player-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        /* Player colors */
+        .player-1 { background-color: #ff6347; }
+        .player-2 { background-color: #4682b4; }
+        .player-3 { background-color: #3cb371; }
+        .player-4 { background-color: #ffdead; }
+
+        .message-box {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .message-content {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        #timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e35050;
+        }
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .keypad-btn {
+            background-color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .keypad-btn:hover {
+            background-color: #cbd5e1;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .board-cell {
+            position: relative;
+            background-color: #e0f2fe;
+            border-radius: 8px;
+            padding: 1rem;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .board-cell.special {
+            background-color: #fef3c7; /* Gold color */
+        }
+        .board-cell.trap {
+            background-color: #fee2e2; /* Red color */
+        }
+        .board-cell.start { background-color: #d1fae5; }
+        .board-cell.goal { background-color: #a78bfa; color: white; }
+
+        .player-on-board {
+            position: absolute;
+            bottom: 0.25rem;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.5s ease-in-out;
+            z-index: 10;
+        }
+        .dice-display {
+            font-size: 2rem;
+            font-weight: bold;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            align-items: center;
+        }
+        .dice-animation {
+            animation: spin 0.5s infinite linear;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center p-4">
+
+    <div class="container space-y-8">
+        <h1 class="text-4xl font-extrabold text-blue-800">소수 나눗셈 슈퍼 챔피언십</h1>
+        <p id="sub-title" class="text-xl text-gray-600">문제 풀고, 승리하세요!</p>
+
+        <!-- 게임 설정 화면 -->
+        <div id="setup-screen" class="space-y-6">
+            <h2 class="text-2xl font-bold text-gray-700">플레이어 수 선택</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button id="players-1-btn" class="btn btn-blue">1명 (컴퓨터와 대결)</button>
+                <button id="players-2-btn" class="btn btn-blue">2명</button>
+                <button id="players-3-btn" class="btn btn-blue">3명</button>
+                <button id="players-4-btn" class="btn btn-blue">4명</button>
+            </div>
+        </div>
+
+        <!-- 게임 진행 화면 -->
+        <div id="game-screen" class="space-y-8 hidden">
+            <!-- 플레이어 정보 -->
+            <div id="players-container" class="flex justify-around items-end w-full"></div>
+            
+            <!-- 게임 보드 -->
+            <div id="game-board" class="game-board"></div>
+
+            <!-- 현재 턴 정보 및 타이머 -->
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <div class="flex-grow">
+                    <p id="current-player-text" class="text-xl font-bold text-blue-800"></p>
+                    <p id="timer" class="text-lg text-red-500"></p>
+                </div>
+                <button id="main-action-btn" class="btn btn-blue w-full sm:w-auto">문제 풀기</button>
+            </div>
+            
+            <!-- 주사위 결과 표시 -->
+            <div id="dice-result" class="dice-display hidden"></div>
+
+            <!-- 문제와 입력 -->
+            <div id="question-card" class="bg-blue-50 p-6 rounded-xl shadow-lg space-y-4 hidden">
+                <p id="question-text" class="text-2xl font-bold text-blue-800"></p>
+                <p id="question-type" class="text-lg text-gray-600"></p>
+                
+                <div class="flex flex-col items-center gap-4">
+                    <input type="text" id="user-answer" placeholder="정답을 입력하세요" class="w-full sm:w-40 p-3 text-center border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500" readonly>
+                    <div class="keypad">
+                        <button class="keypad-btn" data-value="1">1</button>
+                        <button class="keypad-btn" data-value="2">2</button>
+                        <button class="keypad-btn" data-value="3">3</button>
+                        <button class="keypad-btn" data-value="4">4</button>
+                        <button class="keypad-btn" data-value="5">5</button>
+                        <button class="keypad-btn" data-value="6">6</button>
+                        <button class="keypad-btn" data-value="7">7</button>
+                        <button class="keypad-btn" data-value="8">8</button>
+                        <button class="keypad-btn" data-value="9">9</button>
+                        <button class="keypad-btn" data-value=".">.</button>
+                        <button class="keypad-btn" data-value="0">0</button>
+                        <button class="keypad-btn" data-value="C">C</button>
+                    </div>
+                </div>
+                
+                <button id="submit-btn" class="btn btn-green w-full mt-4">정답 제출</button>
+            </div>
+        </div>
+
+        <!-- 게임 종료 화면 -->
+        <div id="end-screen" class="space-y-6 hidden">
+            <h2 class="text-3xl font-bold text-purple-600">게임 종료!</h2>
+            <div id="winner-info" class="text-xl font-bold text-gray-800"></div>
+            <button id="restart-btn" class="btn btn-blue">다시 시작하기</button>
+        </div>
+    </div>
+
+    <!-- 커스텀 메시지 박스 -->
+    <div id="message-box" class="message-box hidden">
+        <div class="message-content">
+            <h3 id="message-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="message-text" class="text-lg text-gray-700 mb-6"></p>
+            <button id="close-message-btn" class="btn btn-blue">확인</button>
+        </div>
+    </div>
+
+    <script>
+        const QUESTIONS_POOL = {
+            '하': [
+                { q: "4.5 ÷ 0.5 = ?", type: "소수/소수", answer: 9, penalty: -1 },
+                { q: "6 ÷ 0.2 = ?", type: "자연수/소수", answer: 30, penalty: -1 },
+                { q: "8.4 ÷ 4 = ?", type: "소수/자연수", answer: 2.1, penalty: -1 },
+                { q: "2.4 ÷ 0.4 = ?", type: "소수/소수", answer: 6, penalty: -1 },
+                { q: "7 ÷ 0.5 = ?", type: "자연수/소수", answer: 14, penalty: -1 },
+                { q: "9.9 ÷ 9 = ?", type: "소수/자연수", answer: 1.1, penalty: -1 },
+                { q: "3.6 ÷ 0.3 = ?", type: "소수/소수", answer: 12, penalty: -1 },
+                { q: "25 ÷ 0.5 = ?", type: "자연수/소수", answer: 50, penalty: -1 },
+                { q: "5.5 ÷ 1.1 = ?", type: "소수/소수", answer: 5, penalty: -1 },
+                { q: "16 ÷ 0.8 = ?", type: "자연수/소수", answer: 20, penalty: -1 }
+            ],
+            '중': [
+                { q: "7.2 ÷ 0.8 = ?", type: "소수/소수", answer: 9, penalty: -2 },
+                { q: "12 ÷ 0.4 = ?", type: "자연수/소수", answer: 30, penalty: -2 },
+                { q: "5 ÷ 3 = ? (소수점 둘째 자리에서 반올림)", type: "몫 반올림", answer: 1.7, penalty: -2 },
+                { q: "15.6 ÷ 1.3 = ?", type: "소수/소수", answer: 12, penalty: -2 },
+                { q: "45 ÷ 0.6 = ?", type: "자연수/소수", answer: 75, penalty: -2 },
+                { q: "10 ÷ 6 = ? (소수점 둘째 자리에서 반올림)", type: "몫 반올림", answer: 1.67, penalty: -2 },
+                { q: "13.2 ÷ 2.2 = ?", type: "소수/소수", answer: 6, penalty: -2 },
+                { q: "28 ÷ 0.5 = ?", type: "자연수/소수", answer: 56, penalty: -2 },
+                { q: "14.4 ÷ 3 = ?", type: "소수/자연수", answer: 4.8, penalty: -2 },
+                { q: "40.5 ÷ 9 = ?", type: "소수/자연수", answer: 4.5, penalty: -2 }
+            ],
+            '상': [
+                { q: "12.3 ÷ 4.1 = ?", type: "소수/소수", answer: 3, penalty: -3 },
+                { q: "30m 끈을 0.7m씩 자르면 남는 끈의 길이는 몇 m일까요?", type: "남는 양", answer: 0.6, penalty: -3 },
+                { q: "13.44 ÷ 2.24 = ?", type: "소수/소수", answer: 6, penalty: -3 },
+                { q: "7 ÷ 1.3 = ? (소수점 둘째 자리에서 반올림)", type: "몫 반올림", answer: 5.38, penalty: -3 },
+                { q: "1.25 ÷ 0.05 = ?", type: "소수/소수", answer: 25, penalty: -3 },
+                { q: "450L 물을 3.5L씩 나누면 남는 물의 양은 몇 L일까요?", type: "남는 양", answer: 0.5, penalty: -3 },
+                { q: "20.72 ÷ 2.8 = ?", type: "소수/소수", answer: 7.4, penalty: -3 },
+                { q: "9.3 ÷ 4.2 = ? (소수점 둘째 자리에서 반올림)", type: "몫 반올림", answer: 2.21, penalty: -3 },
+                { q: "100cm 철사를 1.5cm씩 나누면 남는 철사의 길이는 몇 cm일까요?", type: "남는 양", answer: 1, penalty: -3 },
+                { q: "56.4 ÷ 0.8 = ?", type: "소수/소수", answer: 70.5, penalty: -3 }
+            ],
+        };
+
+        const BOARD_SIZE = 51; // 0부터 50까지 51칸
+        const SPECIAL_TILES = {
+            10: { title: "보너스!", text: "두 칸 더 전진!", type: "move", value: 2 },
+            20: { title: "함정!", text: "한 칸 뒤로!", type: "move", value: -1 },
+            25: { title: "행운의 자리바꿈!", text: "다른 플레이어와 자리를 바꿉니다!", type: "swap" },
+            35: { title: "점프!", text: "40번 칸으로 순간 이동!", type: "teleport", value: 40 },
+            45: { title: "위기!", text: "두 칸 뒤로!", type: "move", value: -2 },
+        };
+        const WIN_POSITION = BOARD_SIZE - 1;
+        
+        let players = [];
+        let currentPlayerIndex = 0;
+        let currentQuestion = null;
+        let timer = null;
+        let timeLeft = 0;
+
+        // HTML elements
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const playersContainer = document.getElementById('players-container');
+        const gameBoard = document.getElementById('game-board');
+        const currentPlayerText = document.getElementById('current-player-text');
+        const mainActionBtn = document.getElementById('main-action-btn');
+        const questionCard = document.getElementById('question-card');
+        const questionText = document.getElementById('question-text');
+        const questionType = document.getElementById('question-type');
+        const userAnswerInput = document.getElementById('user-answer');
+        const submitBtn = document.getElementById('submit-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const timerElement = document.getElementById('timer');
+        const keypadButtons = document.querySelectorAll('.keypad-btn');
+        const diceResultElement = document.getElementById('dice-result');
+
+        // Message Box
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const closeMessageBtn = document.getElementById('close-message-btn');
+        
+        // Event Listeners
+        document.getElementById('players-1-btn').addEventListener('click', () => startGame(1));
+        document.getElementById('players-2-btn').addEventListener('click', () => startGame(2));
+        document.getElementById('players-3-btn').addEventListener('click', () => startGame(3));
+        document.getElementById('players-4-btn').addEventListener('click', () => startGame(4));
+        mainActionBtn.addEventListener('click', handleMainAction);
+        submitBtn.addEventListener('click', checkAnswer);
+        restartBtn.addEventListener('click', restartGame);
+        closeMessageBtn.addEventListener('click', () => messageBox.classList.add('hidden'));
+
+        // Keypad Events
+        keypadButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const value = button.getAttribute('data-value');
+                if (value === 'C') {
+                    userAnswerInput.value = '';
+                } else if (value === '.') {
+                    if (!userAnswerInput.value.includes('.')) {
+                        userAnswerInput.value += value;
+                    }
+                } else {
+                    userAnswerInput.value += value;
+                }
+            });
+        });
+
+        function startGame(numPlayers) {
+            players = [];
+            const playerEmojis = ['😀', '🥳', '😎', '🤩'];
+            const playerColors = ['player-1', 'player-2', 'player-3', 'player-4'];
+            for (let i = 0; i < numPlayers; i++) {
+                players.push({
+                    name: `플레이어 ${i + 1}`,
+                    position: 0,
+                    emoji: playerEmojis[i],
+                    color: playerColors[i],
+                    skippedTurn: false
+                });
+            }
+            if (numPlayers === 1) {
+                players.push({
+                    name: "컴퓨터",
+                    position: 0,
+                    isComputer: true,
+                    emoji: '🤖',
+                    color: 'player-4'
+                });
+            }
+            
+            currentPlayerIndex = 0;
+            
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            createBoard();
+            updateUI();
+            
+            mainActionBtn.disabled = false;
+            showMessage('게임 시작!', '문제 풀기 버튼을 눌러 첫 턴을 시작하세요!');
+        }
+
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = `board-cell`;
+                cell.id = `cell-${i}`;
+                cell.textContent = i === 0 ? 'START' : i === WIN_POSITION ? 'GOAL' : i;
+                if (i === 0) cell.classList.add('start');
+                if (i === WIN_POSITION) cell.classList.add('goal');
+                if (SPECIAL_TILES[i]) cell.classList.add('special');
+                gameBoard.appendChild(cell);
+            }
+        }
+
+        function updateUI() {
+            playersContainer.innerHTML = '';
+            document.querySelectorAll('.player-on-board').forEach(el => el.remove());
+
+            players.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `player-info ${index === currentPlayerIndex ? 'active' : ''} space-y-2`;
+                playerDiv.innerHTML = `
+                    <div class="player-icon ${player.color}">${player.emoji}</div>
+                    <span class="font-bold text-gray-700">${player.name}</span>
+                `;
+                playersContainer.appendChild(playerDiv);
+
+                const playerOnBoardDiv = document.createElement('div');
+                playerOnBoardDiv.className = `player-icon ${player.color} player-on-board`;
+                playerOnBoardDiv.textContent = player.emoji;
+                document.getElementById(`cell-${player.position}`).appendChild(playerOnBoardDiv);
+            });
+
+            currentPlayerText.textContent = `${players[currentPlayerIndex].name}의 차례입니다!`;
+        }
+
+        function handleMainAction() {
+            startQuestionTurn();
+        }
+
+        function getRandomDifficulty() {
+            const rand = Math.random();
+            if (rand < 0.4) return '하'; // 40%
+            if (rand < 0.8) return '중'; // 40%
+            return '상'; // 20%
+        }
+
+        function startQuestionTurn() {
+            mainActionBtn.disabled = true;
+            questionCard.classList.remove('hidden');
+
+            const currentPlayer = players[currentPlayerIndex];
+            const difficulty = getRandomDifficulty();
+            
+            const questionPool = QUESTIONS_POOL[difficulty];
+            currentQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
+            currentQuestion.difficulty = difficulty;
+            
+            // Set timer based on difficulty
+            let timeLimit = 0;
+            if (difficulty === '하') timeLimit = 10;
+            else if (difficulty === '중') timeLimit = 20;
+            else if (difficulty === '상') timeLimit = 30;
+            timeLeft = timeLimit;
+
+            questionText.textContent = currentQuestion.q;
+            questionType.textContent = `(${currentQuestion.type}, 난이도: ${difficulty.toUpperCase()})`;
+            userAnswerInput.value = '';
+            
+            timerElement.textContent = `남은 시간: ${timeLeft}초`;
+            
+            if (currentPlayer.isComputer) {
+                submitBtn.disabled = true;
+                setTimeout(() => {
+                    clearInterval(timer);
+                    const isCorrect = Math.random() < 0.8;
+                    const computerAnswer = isCorrect ? currentQuestion.answer : (Math.random() * 10).toFixed(2);
+                    userAnswerInput.value = computerAnswer;
+                    checkAnswer();
+                }, 2000);
+            } else {
+                submitBtn.disabled = false;
+                if (timer) clearInterval(timer);
+                timer = setInterval(() => {
+                    timeLeft--;
+                    timerElement.textContent = `남은 시간: ${timeLeft}초`;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        checkAnswer();
+                    }
+                }, 1000);
+            }
+        }
+
+        function checkAnswer() {
+            if (timer) clearInterval(timer);
+            
+            const userAnswer = parseFloat(userAnswerInput.value);
+            const correctAnswer = parseFloat(currentQuestion.answer);
+            
+            let isCorrect = false;
+            if (currentQuestion.type === '남는 양' || currentQuestion.type === '몫 반올림') {
+                isCorrect = Math.abs(userAnswer - correctAnswer) < 0.001; 
+            } else {
+                isCorrect = userAnswer === correctAnswer;
+            }
+
+            if (isCorrect) {
+                document.getElementById('question-card').classList.add('hidden');
+                rollDiceAndMove(currentQuestion.difficulty);
+            } else {
+                showMessage('🤔 오답!', `틀렸어요! 정답은 ${correctAnswer}입니다.`, () => {
+                    document.getElementById('question-card').classList.add('hidden');
+                    nextPlayer();
+                });
+            }
+        }
+
+        function rollDiceAndMove(difficulty) {
+            let numDice = 0;
+            if (difficulty === '하') numDice = 1;
+            else if (difficulty === '중') numDice = 2;
+            else if (difficulty === '상') numDice = 3;
+
+            // Animate dice rolling
+            diceResultElement.classList.remove('hidden');
+            diceResultElement.classList.add('dice-animation');
+            
+            let animationTimer = 1500; // 1.5 seconds
+            let rollInterval = setInterval(() => {
+                let randomRolls = [];
+                for(let i=0; i<numDice; i++) {
+                    randomRolls.push(Math.floor(Math.random() * 3) + 1);
+                }
+                diceResultElement.textContent = `🎲 ${randomRolls.join(' ')}`;
+            }, 100);
+
+            // Wait for animation to finish
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                diceResultElement.classList.remove('dice-animation');
+                
+                let totalMovement = 0;
+                let diceRolls = [];
+                for(let i=0; i<numDice; i++) {
+                    const roll = Math.floor(Math.random() * 3) + 1; // 1 to 3
+                    totalMovement += roll;
+                    diceRolls.push(roll);
+                }
+                
+                diceResultElement.textContent = `주사위 결과: ${diceRolls.join(' + ')} = ${totalMovement}칸`;
+                
+                showMessage('주사위 결과', `총 ${totalMovement}칸 이동합니다!`, () => {
+                    movePlayer(totalMovement);
+                });
+
+            }, animationTimer);
+        }
+
+        function movePlayer(movement) {
+            const player = players[currentPlayerIndex];
+            const startPos = player.position;
+            const endPos = Math.min(startPos + movement, WIN_POSITION);
+            
+            let currentMove = startPos;
+            const moveInterval = setInterval(() => {
+                if (currentMove < endPos) {
+                    currentMove++;
+                    player.position = currentMove;
+                    updateUI();
+                } else {
+                    clearInterval(moveInterval);
+                    checkSpecialTile(player);
+                }
+            }, 300); // 0.3초마다 한 칸씩 이동
+        }
+
+        function checkSpecialTile(player) {
+            const specialTile = SPECIAL_TILES[player.position];
+            diceResultElement.classList.add('hidden');
+            if (specialTile) {
+                if (specialTile.type === 'move') {
+                    player.position = Math.max(0, player.position + specialTile.value);
+                    showMessage(specialTile.title, specialTile.text, () => {
+                        updateUI();
+                        checkWinCondition();
+                        nextPlayer();
+                    });
+                } else if (specialTile.type === 'trap') {
+                    player.skippedTurn = true;
+                    showMessage(specialTile.title, specialTile.text, nextPlayer);
+                } else if (specialTile.type === 'teleport') {
+                    player.position = specialTile.value;
+                    showMessage(specialTile.title, specialTile.text, () => {
+                        updateUI();
+                        checkWinCondition();
+                        nextPlayer();
+                    });
+                } else if (specialTile.type === 'swap') {
+                    const otherPlayers = players.filter((p, i) => i !== currentPlayerIndex && p.position < WIN_POSITION);
+                    if (otherPlayers.length > 0) {
+                        const otherPlayer = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+                        const tempPos = player.position;
+                        player.position = otherPlayer.position;
+                        otherPlayer.position = tempPos;
+                        showMessage(specialTile.title, `${player.name} 님과 ${otherPlayer.name} 님이 자리를 바꿉니다!`, () => {
+                             updateUI();
+                             checkWinCondition();
+                             nextPlayer();
+                        });
+                    } else {
+                        showMessage(specialTile.title, "자리를 바꿀 다른 플레이어가 없습니다!", nextPlayer);
+                    }
+                }
+            } else {
+                checkWinCondition();
+                nextPlayer();
+            }
+        }
+
+        function checkWinCondition() {
+            if (players[currentPlayerIndex].position >= WIN_POSITION) {
+                endGame();
+            }
+        }
+
+        function nextPlayer() {
+            mainActionBtn.textContent = '문제 풀기';
+            mainActionBtn.disabled = false;
+            
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            
+            // Handle skipped turns
+            if (players[currentPlayerIndex].skippedTurn) {
+                players[currentPlayerIndex].skippedTurn = false;
+                showMessage('턴 스킵', `${players[currentPlayerIndex].name} 님은 함정에 빠져 이번 턴을 쉽니다.`, nextPlayer);
+            } else {
+                updateUI();
+            }
+        }
+
+        function endGame() {
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            const winner = players.find(p => p.position >= WIN_POSITION);
+            const winnerInfo = document.getElementById('winner-info');
+            winnerInfo.innerHTML = `${winner.emoji} ${winner.name} 님이 최종 우승했습니다!`;
+        }
+
+        function restartGame() {
+            endScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+            players = [];
+            currentPlayerIndex = 0;
+            updateUI();
+        }
+
+        function showMessage(title, text, callback = () => {}) {
+            messageTitle.textContent = title;
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+            
+            const handleClose = () => {
+                messageBox.classList.add('hidden');
+                closeMessageBtn.removeEventListener('click', handleClose);
+                callback();
+            };
+            closeMessageBtn.addEventListener('click', handleClose);
+        }
+    </script>
+</body>
+</html>
